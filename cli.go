@@ -12,6 +12,7 @@ type CLI struct {
 const Usage = `
 	addBlock --data DATA     "add data to blockchain"
 	printChain               "print all blockchain data" 
+	getBalance  --address ADDRESS "print balance for the address"
 `
 
 func (this *CLI) Run()  {
@@ -34,6 +35,15 @@ func (this *CLI) Run()  {
 	case "printChain":
 		fmt.Println("打印区块逻辑")
 		this.PrintBlockChain()
+	case "getBalance":
+		fmt.Println("获取余额")
+		if len(args)==4&&args[2]=="--address"{
+			address:=args[3]
+			this.GetBalance(address)
+		}else{
+			fmt.Println("获取参数有误,请重新输入")
+			fmt.Println(Usage)
+		}
 	default:
 		fmt.Println("无效的命令,请重新输入")
 		fmt.Println(Usage)

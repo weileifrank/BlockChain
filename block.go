@@ -24,11 +24,12 @@ type Block struct {
 	//当前hash
 	Hash []byte
 	//数据
-	Data []byte
+	//Data []byte
+	Transactions []*Transaction
 }
 
 //创建区块
-func NewBlock(data string, prevBlockHash []byte) *Block {
+func NewBlock(txs []*Transaction, prevBlockHash []byte) *Block {
 	block := Block{
 		Version:    00,
 		PreHash:    prevBlockHash,
@@ -37,8 +38,10 @@ func NewBlock(data string, prevBlockHash []byte) *Block {
 		Difficulty: 0,
 		Nonce:      0,
 		Hash:       []byte{},
-		Data:       []byte(data),
+		//Data:       []byte(data),
+		Transactions:txs,
 	}
+	block.MerkelRoot = block.MakeMerkelRoot()
 	pow := NewProofOfWork(&block)
 	hash, nonce := pow.Run()
 	block.Hash = hash
@@ -77,18 +80,8 @@ func Uint64ToByte(num uint64) []byte {
 	return buffer.Bytes()
 }
 
-// 给区块赋值
-//func (this *Block) SetHash() {
-//	tmp := [][]byte{
-//		Uint64ToByte(this.Version),
-//		this.PreHash,
-//		this.MerkelRoot,
-//		Uint64ToByte(this.TimeStamp),
-//		Uint64ToByte(this.Difficulty),
-//		Uint64ToByte(this.Nonce),
-//		this.Data,
-//	}
-//	blockInfo := bytes.Join(tmp, []byte{})
-//	hash := sha256.Sum256(blockInfo)
-//	this.Hash = hash[:]
-//}
+func (block *Block)MakeMerkelRoot() []byte {
+	//todo
+	return []byte{}
+}
+

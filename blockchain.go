@@ -1,20 +1,22 @@
 package main
 
 import (
+	"fmt"
 	"github.com/boltdb/bolt"
 )
 
 type BlockChain struct {
 	//blocks []*Block
-	db *bolt.DB
+	db   *bolt.DB
 	tail []byte
 }
+
 const BLOCKCHAINDB = "blockChain.db"
 const BLOCKBUCKET = "blockBucket"
 const LASTHASHKEY = "LastHashKey"
 
 //创建区块链
-func NewBlockChain() *BlockChain {
+func NewBlockChain(address string) *BlockChain {
 	var lastHash []byte
 	db, err := bolt.Open(BLOCKCHAINDB, 0600, nil)
 	if err != nil {
@@ -28,39 +30,68 @@ func NewBlockChain() *BlockChain {
 			if err != nil {
 				panic(err)
 			}
-			genesisBlock:=GenesisBlock()
-			bucket.Put(genesisBlock.Hash,genesisBlock.Serialize())
-			bucket.Put([]byte(LASTHASHKEY),genesisBlock.Hash)
+			genesisBlock := GenesisBlock(address)
+			bucket.Put(genesisBlock.Hash, genesisBlock.Serialize())
+			bucket.Put([]byte(LASTHASHKEY), genesisBlock.Hash)
 			lastHash = genesisBlock.Hash
-		}else{
+		} else {
 			lastHash = bucket.Get([]byte(LASTHASHKEY))
 		}
 
 		return nil
 	})
-	return &BlockChain{db,lastHash}
+	return &BlockChain{db, lastHash}
 }
 
 //添加区块
-func (this *BlockChain) AddBlock(data string) {
-	db:=this.db
-	lastHash:=this.tail
+func (this *BlockChain) AddBlock(txs []*Transaction) {
+	db := this.db
+	lastHash := this.tail
 	db.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(BLOCKBUCKET))
-		if bucket == nil{
+		if bucket == nil {
 			panic("不能为空")
 		}
-		block := NewBlock(data, lastHash)
-		bucket.Put(block.Hash,block.Serialize())
-		bucket.Put([]byte(LASTHASHKEY),block.Hash)
+		block := NewBlock(txs, lastHash)
+		bucket.Put(block.Hash, block.Serialize())
+		bucket.Put([]byte(LASTHASHKEY), block.Hash)
 		this.tail = block.Hash
 		return nil;
 	})
 
-
 }
 
 //定义创世区块
-func GenesisBlock() *Block {
-	return NewBlock("区块首页", []byte{})
+func GenesisBlock(address string) *Block {
+	coinbase := NewCoinbaseTX(address, "首页老牛逼了")
+	return NewBlock([]*Transaction{coinbase}, []byte{})
+}
+
+func (bc *BlockChain) FindUTXOs(address string) []TXOutput {
+	var UTXO []TXOutput
+	spentOutputs:=make(map[string][]int64)
+	it := bc.NewIterator()
+	for{
+		block:= it.Next()
+		if block == nil{
+			break
+		}
+		for _,tx := range block.Transactions {
+			fmt.Println("current txid:",tx.TXID)
+		//OUTPUT:
+			for _, output := range tx.TXOnputs {
+				if output.PubKeyHash == address {
+					UTXO = append(UTXO,output)
+				}
+			}
+			if !tx.IsCoinbase() {
+				for _, input := range tx.TXInputs {
+					if input.Sig == address{
+						spentOutputs[string(input.TXid)] = append(spentOutputs[string(input.TXid)],input.Index)
+					}
+				}
+			}
+		}
+	}
+	return UTXO
 }
