@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/binary"
 	"encoding/gob"
 	"log"
@@ -77,11 +78,16 @@ func Uint64ToByte(num uint64) []byte {
 	if err != nil {
 		log.Panic(err)
 	}
+
 	return buffer.Bytes()
 }
 
 func (block *Block)MakeMerkelRoot() []byte {
-	//todo
-	return []byte{}
+	var info []byte
+	for _, tx := range block.Transactions {
+		info = append(info,tx.TXID...)
+	}
+	hash := sha256.Sum256(info)
+	return hash[:]
 }
 

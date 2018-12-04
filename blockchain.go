@@ -69,19 +69,60 @@ func GenesisBlock(address string) *Block {
 
 func (bc *BlockChain) FindUTXOs(address string) []TXOutput {
 	var UTXO []TXOutput
-	spentOutputs:=make(map[string][]int64)
-	it := bc.NewIterator()
-	for{
-		block:= it.Next()
-		if block == nil{
-			break
+	txs := bc.FindUTXOTransactions(address)
+	for _, tx := range txs {
+		for _, output := range tx.TXOnputs {
+			if address == output.PubKeyHash {
+				UTXO = append(UTXO,output)
+			}
 		}
-		for _,tx := range block.Transactions {
-			fmt.Println("current txid:",tx.TXID)
-		//OUTPUT:
-			for _, output := range tx.TXOnputs {
+	}
+	return UTXO
+}
+
+func (bc *BlockChain)FindNeedUTXOs(from string, amount float64)(map[string][]uint64,float64)  {
+	var utxos = make(map[string][]uint64)
+	var calc float64
+	txs := bc.FindUTXOTransactions(from)
+	for _, tx := range txs {
+		for i, output := range tx.TXOnputs {
+			if from == output.PubKeyHash {
+				if calc < amount {
+					utxos[string(tx.TXID)] = append(utxos[string(tx.TXID)], uint64(i))
+					calc+=output.Value
+					if calc >= amount {
+						return utxos,calc
+					}
+				}else{
+					fmt.Printf("不满足转账金额,当前总额：%f， 目标金额: %f\n", calc, amount)
+				}
+			}
+		}
+	}
+	return utxos,calc
+}
+
+func (bc *BlockChain)FindUTXOTransactions(address string) []*Transaction {
+	var txs []*Transaction
+	spentOutputs:=make(map[string][]int64)
+	it:=bc.NewIterator()
+	for{
+		block := it.Next()
+		if block == nil{
+			return txs
+		}
+		for _, tx := range block.Transactions {
+			OUTPUT:
+			for i, output := range tx.TXOnputs {
+				if spentOutputs[string(tx.TXID)] != nil{
+					for _, j := range spentOutputs[string(tx.TXID)] {
+						if int64(i) == j{
+							continue OUTPUT
+						}
+					}
+				}
 				if output.PubKeyHash == address {
-					UTXO = append(UTXO,output)
+					txs = append(txs, tx)
 				}
 			}
 			if !tx.IsCoinbase() {
@@ -93,5 +134,24 @@ func (bc *BlockChain) FindUTXOs(address string) []TXOutput {
 			}
 		}
 	}
-	return UTXO
+	return txs
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
